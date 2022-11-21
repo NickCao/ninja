@@ -259,7 +259,8 @@ configure_args = sys.argv[1:]
 if '--bootstrap' in configure_args:
     configure_args.remove('--bootstrap')
 n.variable('configure_args', ' '.join(configure_args))
-env_keys = set(['CXX', 'AR', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS'])
+env_keys = set(['CXX', 'AR', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS',
+                'CXX_FOR_BUILD', 'AR_FOR_BUILD', 'CFLAGS_FOR_BUILD', 'CXXFLAGS_FOR_BUILD', 'LDFLAGS_FOR_BUILD'])
 configure_env = dict((k, os.environ[k]) for k in os.environ if k in env_keys)
 if configure_env:
     config_str = ' '.join([k + '=' + pipes.quote(configure_env[k])
@@ -267,7 +268,10 @@ if configure_env:
     n.variable('configure_env', config_str + '$ ')
 n.newline()
 
-CXX = configure_env.get('CXX', 'c++')
+if options.bootstrap:
+  CXX = configure_env.get('CXX_FOR_BUILD', 'c++')
+else:
+  CXX = configure_env.get('CXX', 'c++')
 objext = '.o'
 if platform.is_msvc():
     CXX = 'cl'
@@ -300,6 +304,8 @@ n.variable('builddir', 'build')
 n.variable('cxx', CXX)
 if platform.is_msvc():
     n.variable('ar', 'link')
+elif options.bootstrap:
+    n.variable('ar', configure_env.get('AR_FOR_BUILD', 'ar'))
 else:
     n.variable('ar', configure_env.get('AR', 'ar'))
 
@@ -416,15 +422,25 @@ def shell_escape(str):
         return "'%s'" % str.replace("'", "\\'")
     return str
 
-if 'CFLAGS' in configure_env:
-    cflags.append(configure_env['CFLAGS'])
-    ldflags.append(configure_env['CFLAGS'])
-if 'CXXFLAGS' in configure_env:
-    cflags.append(configure_env['CXXFLAGS'])
-    ldflags.append(configure_env['CXXFLAGS'])
+if options.bootstrap:
+  if 'CFLAGS_FOR_BUILD' in configure_env:
+      cflags.append(configure_env['CFLAGS_FOR_BUILD'])
+      ldflags.append(configure_env['CFLAGS_FOR_BUILD'])
+  if 'CXXFLAGS_FOR_BUILD' in configure_env:
+      cflags.append(configure_env['CXXFLAGS_FOR_BUILD'])
+      ldflags.append(configure_env['CXXFLAGS_FOR_BUILD'])
+  if 'LDFLAGS_FOR_BUILD' in configure_env:
+      ldflags.append(configure_env['LDFLAGS_FOR_BUILD'])
+else:
+  if 'CFLAGS' in configure_env:
+      cflags.append(configure_env['CFLAGS'])
+      ldflags.append(configure_env['CFLAGS'])
+  if 'CXXFLAGS' in configure_env:
+      cflags.append(configure_env['CXXFLAGS'])
+      ldflags.append(configure_env['CXXFLAGS'])
+  if 'LDFLAGS' in configure_env:
+      ldflags.append(configure_env['LDFLAGS'])
 n.variable('cflags', ' '.join(shell_escape(flag) for flag in cflags))
-if 'LDFLAGS' in configure_env:
-    ldflags.append(configure_env['LDFLAGS'])
 n.variable('ldflags', ' '.join(shell_escape(flag) for flag in ldflags))
 n.newline()
 
